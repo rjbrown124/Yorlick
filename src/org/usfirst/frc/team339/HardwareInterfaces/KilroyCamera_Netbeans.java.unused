@@ -1,0 +1,479 @@
+// ====================================================================
+// FILE NAME: KilroyCamera.java (Team 339 - Kilroy)
+//
+// CREATED ON: Oct 16, 2014
+// MODIFIED ON:
+// MODIFIED BY:
+// ABSTRACT:
+// This class is used to hold an AxisCamera instance or null if we
+// say that we do not have a camera. If we say that we do not have
+// a camera, all of the methods dealing with the camera values return
+// bogus values/don't acutally set anything when asked to write a
+// value. All of the methods are identical to the AxisCamera methods,
+// except for the constructor, those dealing with having a camera,
+// and getCameraInstance().
+//
+// NOTE: Please do not release this code without permission from
+// Team 339.
+// ====================================================================
+
+package org.usfirst.frc.team339.HardwareInterfaces;
+
+// import edu.wpi.first.wpilibj.camera.*;
+import edu.wpi.first.wpilibj.image.ColorImage;
+import edu.wpi.first.wpilibj.image.HSLImage;
+import edu.wpi.first.wpilibj.image.NIVisionException;
+import edu.wpi.first.wpilibj.vision.AxisCamera;
+
+/** A camera container/interface that holds an instance of the AxisCamera
+ * class and a boolean used to determine if we have a camera on the robot.
+ * This class has methods that are the same as the AxisCamera classes (it
+ * does not include all of methods, only the ones that we use at this
+ * point). If we do not have a camera, the class does nothing when the
+ * camera methods are called, returning inaccurate values if a get was called
+ * 
+ * @author Nathanial Lydick
+ * @written Oct 16, 2014 */
+public class KilroyCamera_Netbeans
+{
+    // the return value for integers when we have no camera
+    public static final int noCameraIntReturnValue = -1;
+
+    // holds the camera instance, or null if we have no camera
+    private final AxisCamera Camera;
+
+    // holds our boolean used to check whether we have a camera
+    private boolean haveCamera;
+
+    // Constructor, passes in whether we have a camera, and uses the
+    // default AxisCamera.getInstance() to get the camera instance
+    // if we say that we have one
+    // -------------------------------------------------------
+    /** Sets the Camera boolean, in case a change is necessary
+     * 
+     * @method KilroyCamera() - constructor
+     * @param hasCamera
+     *            - whether we have a camera
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public KilroyCamera_Netbeans (boolean hasCamera)
+    {
+    this.haveCamera = hasCamera;
+    if (hasCamera == true)
+        {
+        this.Camera = null;// AxisCamera.getInstance();
+        }
+    else
+        {
+        this.Camera = null;
+        }
+        }
+
+    // --------------------------------------------------------------
+    // All methods below this point simply call the methods for the
+    // Axis camera, if we have one, else it does nothing or it returns
+    // a bogus value (sometimes an impossible value, such as the ints)
+    // --------------------------------------------------------------
+
+    // -------------------------------------------------------
+    /** Returns whether the camera has a fresh image, or true as a default with
+     * no camera
+     * 
+     * @method freshImage()
+     * @return boolean - true if the latest image from the camera has not been
+     *         retrieved yet, or true if we have no camera
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public boolean freshImage ()
+        {
+        if (this.haveCamera)
+            return this.Camera.freshImage();
+        else
+            // returns true so that if we ever try to wait for an image, we will
+            // just continue
+            return true;
+}
+
+    // -------------------------------------------------------
+    /** Returns the Camera's brightness level (0-100)
+     * 
+     * @method getBrightness()
+     * @return Int - Camera.getBrightness() or noCameraIntReturnValue
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public int getBrightness ()
+        {
+        if (this.haveCamera)
+            return this.Camera.getBrightness();
+        else
+            // returns a value that it shouldn't be
+            return noCameraIntReturnValue;
+}
+
+    // -------------------------------------------------------
+    /** Returns the AxisCamera (final), in case direct access is necessary
+     * For the most part, this should not be used, and if a new camera
+     * method is needed, it should just be added to this class
+     * 
+     * @method getCameraInstance()
+     * @return AxisCamera - the camera instance (or null)
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public final AxisCamera getCameraInstance ()
+        {
+        return this.Camera;
+}
+
+    // -------------------------------------------------------
+    /** Returns the color level (0-100) if possible, otherwise it returns
+     * noCameraIntReturnValue
+     * 
+     * @method getColorLevel()
+     * @return Int - Camera.getColorLevel() or noCameraIntReturnValue
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public int getColorLevel ()
+        {
+        if (this.haveCamera)
+            return this.Camera.getColorLevel();
+        else
+            // returns a value that it shouldn't be
+            return noCameraIntReturnValue;
+}
+
+    // -------------------------------------------------------
+    /** Returns the Camera's compression, if possible, or noCameraIntReturnValue
+     * 
+     * @method getCompression()
+     * @return Int - The level of compression of the image being returned from
+     *         the
+     *         camera with 0 being the least and 100 being the greatest. or
+     *         noCameraIntReturnValue
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public int getCompression ()
+        {
+        if (this.haveCamera)
+            return this.Camera.getCompression();
+        else
+            // returns a value that it shouldn't be
+            return noCameraIntReturnValue;
+}
+
+    // -------------------------------------------------------
+    /** Returns the AxisCamera (final), in case direct access is necessary
+     * For the most part, this should not be used, and if a new camera
+     * method is needed, it should just be added to this class
+     * 
+     * @method getExposureControl()
+     * @return ExposureT - Camera.getExposureControl() or
+     *         AxisCamera.ExposureT.automatic
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public AxisCamera.ExposureT getExposureControl ()
+        {
+        if (this.haveCamera)
+            return this.Camera.getExposureControl();
+        else
+            // returns automatic
+            return AxisCamera.ExposureT.automatic;
+}
+
+    // -------------------------------------------------------
+    /** Returns whether we have a camera
+     * 
+     * @method getHaveCamera()
+     * @return boolean - returns whether we have a camera
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public boolean getHaveCamera ()
+        {
+        return this.haveCamera;
+}
+
+    // -------------------------------------------------------
+    /** Returns the camera image, or a 0x0 image given no camera
+     * 
+     * @method getImage()
+     * @return ColorImage - Camera.getImage() or a 0x0 hsl image
+     * @author Nathan Lydick
+     * @throws NIVisionException
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public ColorImage getImage () throws NIVisionException
+        {// throws AxisCameraException, NIVisionException {
+        if (this.haveCamera)
+            return this.Camera.getImage();
+        else
+            // returns a 0x0 image
+            return new HSLImage();
+}
+
+    // -------------------------------------------------------
+    /** Returns the maximum FPS, or noCameraIntReturnValue with no camera
+     * 
+     * @method getMaxFPS()
+     * @return int - Camera.getMaxFPS() or noCameraIntReturnValue with no camera
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public int getMaxFPS ()
+        {
+        if (this.haveCamera)
+            return this.Camera.getMaxFPS();
+        else
+            // returns a value that it shouldn't be
+            return noCameraIntReturnValue;
+}
+
+    // --------------------------------------------------------------
+    // The above methods simply call the methods for the
+    // Axis camera, if we have one, else it does nothing or it returns
+    // a bogus value (sometimes an impossible value, such as the ints
+    // --------------------------------------------------------------
+    // -------------------------------------------------------
+    /** Returns Camera's resolution, if available, or a 160 by 120 resolution
+     * 
+     * @method getResolution()
+     * @return ResolutionT - Camera.getResolutionT() or a 160 by 120 resolution
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public AxisCamera.ResolutionT getResolution ()
+        {
+        if (this.haveCamera)
+            return this.Camera.getResolution();
+        else
+            // returns the smallest resolution and our default
+            return AxisCamera.ResolutionT.k160x120;
+}
+
+    // -------------------------------------------------------
+    /** Returns the Camera's rotation, if possible, otherwise 0 degrees
+     * 
+     * @method getRotation()
+     * @return RotationT - Camera.getRotation() or noCameraIntReturnValue
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public AxisCamera.RotationT getRotation ()
+        {
+        if (this.haveCamera)
+            return this.Camera.getRotation();
+        else
+            // returns 0 rotation
+            return AxisCamera.RotationT.k0;
+}
+
+    // -------------------------------------------------------
+    /** Returns the Camera's white balance if we have a camera
+     * 
+     * @method getWhiteBalance()
+     * @return WhiteBalanceT - Camera.getWhiteBalance() or
+     *         AxisCamera.WhiteBalanceT.automatic
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public AxisCamera.WhiteBalanceT getWhiteBalance ()
+        {
+        if (this.haveCamera)
+            return this.Camera.getWhiteBalance();
+        else
+            // returns automatic
+            return AxisCamera.WhiteBalanceT.automatic;
+}
+
+    // -------------------------------------------------------
+    /** Sets the Camera boolean (whether we have a camera), in case a change is
+     * necessary
+     * 
+     * @method setHaveCamera()
+     * @param value
+     *            - the new value as to whether we have a camera
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public void setHaveCamera (boolean value)
+        {
+        this.haveCamera = value;
+}
+
+    // -------------------------------------------------------
+    /** Sets the Camera brightness, or does nothing with no camera
+     * 
+     * @method writeBrightness()
+     * @param brightness
+     *            - This must be an integer between 0 and 100, with 100 being
+     *            the brightest
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public void writeBrightness (int brightness)
+        {
+        if (this.haveCamera)
+            {
+            this.Camera.writeBrightness(brightness);
+            }
+        else
+            {
+            // returns nothing
+            }
+}
+
+    // -------------------------------------------------------
+    /** Sets the Camera , or does nothing with no camera
+     * 
+     * @method writeColorLevel()
+     * @param value
+     *            - This must be an integer from 0 to 100 with 0 being black and
+     *            white.
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public void writeColorLevel (int value)
+        {
+        if (this.haveCamera)
+            {
+            this.Camera.writeColorLevel(value);
+            }
+        else
+            {
+            // returns nothing
+            }
+}
+
+    // -------------------------------------------------------
+    /** Sets the Camera compression, or does nothing with no camera
+     * 
+     * @method writeCompression()
+     * @param value
+     *            - The level of JPEG compression to use from 0 to 100 with 0
+     *            being the least compression.
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public void writeCompression (int value)
+        {
+        if (this.haveCamera)
+            {
+            this.Camera.writeCompression(value);
+            }
+        else
+            {
+            // returns nothing
+            }
+}
+
+    // -------------------------------------------------------
+    /** Sets the Camera exposure control value, or does nothing with no camera
+     * 
+     * @method writeExposureControl()
+     * @param value
+     *            - The exposure value
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public void writeExposureControl (AxisCamera.ExposureT value)
+        {
+        if (this.haveCamera)
+            {
+            this.Camera.writeExposureControl(value);
+            }
+        else
+            {
+            // returns nothing
+            }
+}
+
+    // -------------------------------------------------------
+    /** Sets the Camera's maximum FPS, or does nothing with no camera
+     * 
+     * @method writeMaxFPS()
+     * @param value
+     *            - the new max FPS
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public void writeMaxFPS (int value)
+        {
+        if (this.haveCamera)
+            {
+            this.Camera.writeMaxFPS(value);
+            }
+        else
+            {
+            // returns nothing
+            }
+}
+
+    // -------------------------------------------------------
+    /** Sets the Camera resolution, or does nothing with no camera
+     * 
+     * @method writeResolution()
+     * @param value
+     *            - The resolution image for the camera to set its images to.
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public void writeResolution (AxisCamera.ResolutionT value)
+        {
+        if (this.haveCamera)
+            {
+            this.Camera.writeResolution(value);
+            }
+        else
+            {
+            // returns nothing
+            }
+}
+
+    // -------------------------------------------------------
+    /** Sets the Camera , or does nothing with no camera
+     * 
+     * @method writeRotation()
+     * @param value
+     *            - The rotation to be applied to images from the camera.
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public void writeRotation (AxisCamera.RotationT value)
+        {
+        if (this.haveCamera)
+            {
+            this.Camera.writeRotation(value);
+            }
+        else
+            {
+            // returns nothing
+            }
+}
+
+    // -------------------------------------------------------
+    /** Sets the Camera white balance, or does nothing with no camera
+     * 
+     * @method writeWhiteBalance()
+     * @param whiteBalance
+     *            - The value to set the white balance to on the camera.
+     * @author Nathan Lydick
+     * @written Oct 16, 2014
+     *          ------------------------------------------------------- */
+    public void writeWhiteBalance (AxisCamera.WhiteBalanceT whiteBalance)
+        {
+        if (this.haveCamera)
+            {
+            this.Camera.writeWhiteBalance(whiteBalance);
+            }
+        else
+            {
+            // returns nothing
+            }
+}
+}

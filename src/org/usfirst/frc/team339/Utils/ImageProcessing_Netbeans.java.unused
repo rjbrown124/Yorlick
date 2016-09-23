@@ -1,0 +1,706 @@
+package org.usfirst.frc.team339.Utils;
+
+import org.usfirst.frc.team339.HardwareInterfaces.KilroyCamera;
+import com.ni.vision.NIVision;
+import edu.wpi.first.wpilibj.image.BinaryImage;
+import edu.wpi.first.wpilibj.image.ColorImage;
+import edu.wpi.first.wpilibj.image.NIVisionException;
+import edu.wpi.first.wpilibj.image.ParticleAnalysisReport;
+
+/** Utility class for taking and processing images from an axis camera
+ * 
+ * @author Will Stuckey and NOAH GOLMANT
+ * @modified by Noah Golmant on 29 May 2014, added criteria functionality to
+ *           replace
+ *           competition-specific functions */
+public class ImageProcessing_Netbeans
+{
+
+    // contains any image errors to print out
+private class LCDError
+    {
+// if we fail in updateImage() while getting the image
+private final static int GET_IMAGE = 1;
+// if we fail while updating the particle analysis reports
+private final static int UPDATE_ANALYSIS_REPORTS = 2;
+    }
+
+// fake enum to hold types of binary image object removal in processing
+public class ObjectRemoval
+    {
+// no object removal
+public final static int NONE = 0;
+// large object removal
+public final static int LARGE = 1;
+// small object removal
+public final static int SMALL = 2;
+    }
+
+    // HSL values
+// competition (no lexan): 80, 145, 0, 255, 145, 220
+// lab (no lexan): 80, 145, 25, 255, 120, 220
+// lab (lexan): 80, 145, 10, 255, 120, 220
+// HSL values
+int hueLow = 0, hueHigh = 255, saturationLow = 0, saturationHigh = 255,
+        luminenceLow = 0, luminenceHigh = 255;
+
+// debug states
+private boolean debugConsole = false;
+
+// camera
+private KilroyCamera camera = null;
+
+// watchdog
+private Watchdog watchdog = null;
+
+// active image
+private ColorImage image = null;
+
+// active reports
+private ParticleAnalysisReport[] reports = null;
+
+// Criteria collection
+private CriteriaCollection criteriaCollection = new CriteriaCollection();
+
+// driver station to print to lcd
+private DriverStationLCD lcd = null;
+
+// line on driver station lcd to print to
+private DriverStationLCD.Line lcdLine = null;
+
+// line on driver station to print errors to
+private DriverStationLCD.Line lcdErrorLine = null;
+
+// middle of the screen on x axis
+private int middleScreenWidth = 80;
+
+// flag to determine whether to apply a convex hull operation
+private boolean useConvexHull = false;
+
+private int objectRemoval = ObjectRemoval.NONE;
+
+private int objectErosion = 1;
+
+    /** Uses default HSL values (80, 145, 0, 255, 95, 150).
+     * Camera must be set in robotInit() using setCamera()
+     * Watchdog must be set in robotInit() using setWatchdog()
+     * LCD must be set in robotInit() with setLCDBlobsLine()
+     * 
+     * @see setCamera()
+     * @see setWatchdog()
+     * @see setLCD()
+     * @author Will
+     * @written 28 Jan 2014 */
+public ImageProcessing_Netbeans ()
+        {
+        }
+
+    /** Uses default HSL values (80, 145, 0, 255, 95, 150).
+     * Watchdog must be set in robotInit() using setWatchdog()
+     * LCD must be set in robotInit() with setLCDBlobsLine()
+     * 
+     * @param camera
+     *            the axis camera used for image capture
+     * @see setWatchdog()
+     * @see setLCD()
+     * @author Will
+     * @written 28 Jan 2014 */
+public ImageProcessing_Netbeans (KilroyCamera camera)
+    {
+    this.camera = camera;
+    }
+
+/** Uses default HSL values.
+     * 
+     * @param camera
+     *            the axis camera used for image capture
+     * @param lcd
+     *            LCD screen on driver station we print debug info to.
+     * @param lcdLine
+     *            line on the driver station LCD to print to
+     * @author Will
+     * @written 28 Jan 2014 */
+public ImageProcessing_Netbeans (KilroyCamera camera, DriverStationLCD lcd,
+        DriverStationLCD.Line lcdLine)
+        {
+        this.camera = camera;
+        this.lcd = lcd;
+        this.lcdLine = lcdLine;
+        }
+
+/** Uses default HSL values (80, 145, 0, 255, 95, 150).
+     * LCD must be set in robotInit() with setLCDBlobsLine()
+     * 
+     * @param camera
+     *            the axis camera used for image capture
+     * @param watchdog
+     *            the robot's watchdog. Image processing takes time
+     *            and will need to feed the watchdog
+     * @see setLCD()
+     * @author Will
+     * @written 28 Jan 2014 */
+public ImageProcessing_Netbeans (KilroyCamera camera, Watchdog watchdog)
+    {
+    this.camera = camera;
+    this.watchdog = watchdog;
+    }
+
+/** Uses default HSL values.
+     * 
+     * @param camera
+     *            the axis camera used for image capture
+     * @param watchdog
+     *            the robot's watchdog. Image processing takes time
+     *            and will need to feed the watchdog
+     * @param lcd
+     *            LCD screen on driver station we print debug info to.
+     * @param lcdLine
+     *            line on the driver station LCD to print to
+     * @author Will
+     * @written 28 Jan 2014 */
+public ImageProcessing_Netbeans (KilroyCamera camera, Watchdog watchdog,
+        DriverStationLCD lcd, DriverStationLCD.Line lcdLine)
+        {
+        this.camera = camera;
+        this.watchdog = watchdog;
+        this.lcd = lcd;
+        this.lcdLine = lcdLine;
+        }
+
+    /** Initializes with all important objects and variables.
+     * 
+     * @param camera
+     *            the axis camera used for image capture
+     * @param watchdog
+     *            the robot's watchdog. Image processing takes time
+     *            and will need to feed the watchdog
+     * @param lcd
+     *            LCD to print out to driver station
+     * @param lcdLine
+     *            line to print to on LCD
+     * @param hueLow
+     *            the HSL value
+     * @param hueHigh
+     *            the HSL value
+     * @param saturationLow
+     *            the HSL value
+     * @param saturationHigh
+     *            the HSL value
+     * @param luminenceLow
+     *            the HSL value
+     * @param luminenceHigh
+     *            the HSL value
+     * @see ColorImage.thresholdHSL()
+     * @author Will
+     * @written 28 Jan 2014 */
+public ImageProcessing_Netbeans (KilroyCamera camera, Watchdog watchdog,
+        DriverStationLCD lcd, DriverStationLCD.Line lcdLine, int hueLow,
+        int hueHigh, int saturationLow, int saturationHigh, int luminenceLow,
+        int luminenceHigh)
+        {
+        this.camera = camera;
+        this.watchdog = watchdog;
+        this.lcd = lcd;
+        this.lcdLine = lcdLine;
+
+        this.setHSLValues(hueLow, hueHigh, saturationLow, saturationHigh,
+            luminenceLow, luminenceHigh);
+        }
+
+public ImageProcessing_Netbeans (KilroyCamera camera, Watchdog watchdog,
+        DriverStationLCD lcd, DriverStationLCD.Line lcdLine, int hueLow,
+        int hueHigh, int saturationLow, int saturationHigh, int luminenceLow,
+        int luminenceHigh, CriteriaCollection criteria)
+        {
+        this.camera = camera;
+        this.watchdog = watchdog;
+        this.lcd = lcd;
+        this.lcdLine = lcdLine;
+
+        this.setHSLValues(hueLow, hueHigh, saturationLow, saturationHigh,
+            luminenceLow, luminenceHigh);
+
+        this.criteriaCollection = criteria;
+        }
+
+/** Adds a criteria to our criteria collection that is used
+     * to filter the image.
+     * 
+     * @param type
+     *            measurement type to use, given from the list of
+     *            information that each blob has in NIVision.MeasurementType.
+     * @param lower
+     *            lower range of this measurement type
+     * @param upper
+     *            upper range of this measurement type
+     * @param outsideRange
+     *            - true if we want to get rid of particles
+     *            within the specified range, false if we want those within the
+     *            range.
+     * 
+     *            Any blob who's measurement of the given
+     *            NIVision.MeasurementType falls outside
+     *            of the given range will be removed from the
+     *            particleAnalysisReports array.
+     * @author Noah Golmant
+     * @written 29 May 2014 */
+public void addCriteria (NIVision.MeasurementType type, float lower,
+        float upper, boolean outsideRange)
+    {
+    this.criteriaCollection.addCriteria(type, lower, upper, outsideRange);
+    }
+
+/** Clears our collection of criteria for image and particle analysis.
+     * 
+     * @author Noah Golmant
+     * @written 29 May 2014 */
+public void clearCriteriaCollection ()
+    {
+    this.criteriaCollection = new CriteriaCollection();
+    }
+
+/** Gets the current image from the camera
+     * 
+     * @return the current image in the camera
+     * @author Noah */
+public ColorImage getImage ()
+        {
+        return this.image;
+        }
+
+/** The number of blobs we see in our current image.
+     * 
+     * @return the number of blobs seen in the image
+     * @author Will
+     * @written 28 Jan 2014 */
+public int getNumBlobs ()
+    {
+    if (this.reports == null)
+        {
+        System.out.println("Reports is null in getNumBlobs()");
+        return 0;
+        }
+
+    for (int i = this.reports.length - 1; i >= 0; i--)
+        {
+        this.watchdog.feed();
+
+        // print if we want to display on the console.
+        if (this.debugConsole == true)
+            {
+            System.out.println("Blob number: " + i);
+            System.out.println("Location: " +
+                    this.reports[i].center_mass_x + ", " +
+                    this.reports[i].center_mass_y);
+            System.out.println("Height: " + this.reports[i].imageHeight);
+            }
+        }
+
+    // if we have an LCD, then we want to print to the driver station.
+    if (this.debugConsole == true)
+        {
+            System.out.println("Number of blobs: " + this.reports.length);
+            }
+
+    if ((this.lcd != null) && (this.lcdLine != null))
+        {
+            this.lcd.println(this.lcdLine, 6, "N" + this.reports.length);
+            }
+
+    return this.reports.length;
+    }
+
+/** Gets the array of blobs that we have gathered.
+     * 
+     * @return particle analysis reports (aka blob reports)
+     * @author Will
+     * @written 28 Jan 2014 */
+public ParticleAnalysisReport[] getParticleAnalysisReports ()
+    {
+    return this.reports;
+    }
+
+/** Gets the width of the widest blob that we see in our particle
+     * analysis reports array.
+     * 
+     * @author Noah Golmant
+     * @written 13 March 2014
+     * @return width of the widest blob */
+public int getWidestBlobWidth ()
+    {
+    if (this.reports == null)
+        return 0;
+
+    int maxBlobWidth = 0;
+    for (int i = this.reports.length - 1; i >= 0; i--)
+        {
+        this.watchdog.feed();
+
+        maxBlobWidth =
+                Math.max(maxBlobWidth, this.reports[i].boundingRectWidth);
+
+        // print if we want to display on the console.
+        if (this.debugConsole == true)
+            {
+            System.out.println("Blob number: " + i);
+            System.out.println("Location: " +
+                    this.reports[i].center_mass_x + ", " +
+                    this.reports[i].center_mass_y);
+            System.out.println("Width: " + this.reports[i].imageWidth);
+            }
+        }
+
+    // if we have an LCD, then we want to print to the driver station.
+    if (this.debugConsole == true)
+        {
+            System.out.println("Blob width: " + maxBlobWidth);
+            }
+
+    if ((this.lcd != null) && (this.lcdLine != null))
+        {
+            this.lcd.println(this.lcdLine, 6, "W" + maxBlobWidth);
+            }
+
+    return maxBlobWidth;
+    }
+
+/** Determines whether or not most blobs are on the right half of the
+     * screen.
+     * 
+     * @return true if most blobs are on the right
+     * @author Noah Golmant
+     * @written 20 March 2014 */
+public boolean higherHalfIsRight ()
+        {
+        if (this.reports == null)
+            return true;
+
+        int numLeft = 0, numRight = 0;
+        for (int i = 0; i < this.reports.length; i++)
+            {
+            this.watchdog.feed();
+
+            if (this.reports[i].center_mass_x > this.middleScreenWidth)
+            {
+                numRight++;
+                }
+        else
+            {
+                numLeft++;
+                }
+
+            }
+
+        if (this.debugConsole == true)
+        {
+            System.out.println("LEFT BLOBS: " + numLeft + ", RIGHT: " +
+                numRight);
+            }
+        if ((this.lcd != null) && (this.lcdLine != null))
+        {
+            this.lcd.println(this.lcdLine, 6, "L" + numLeft + " R" + numRight);
+            }
+
+        return (numRight >= numLeft);
+        }
+
+    /** Prints an error code to the LCD screen with our set error line.
+     * 
+     * @param code
+     *            error code to send.
+     *            erosion defaults to 1.
+     * @author Noah Golmant */
+    private void lcdError (int code)
+        {
+        if ((this.lcd != null) && (this.lcdErrorLine != null))
+        {
+            this.lcd.println(this.lcdErrorLine, 6,
+                "EC" + Integer.toString(code));
+            }
+        }
+
+/** Sets the camera to use while processing
+     * 
+     * @param camera
+     * @author Will
+     * @written 28 Jan 2014 */
+public void setCamera (KilroyCamera camera)
+    {
+    this.camera = camera;
+    }
+
+/** Set the criteria array to a new set
+     * 
+     * @param criteriaCollection
+     *            collection of criteria to use in image filtering
+     * @author Noah Golmant
+     * @written 29 May 2014 */
+public void setCriteriaCollection (CriteriaCollection criteriaCollection)
+    {
+    this.criteriaCollection = criteriaCollection;
+    }
+
+/** Sets whether to debug to the console
+     * 
+     * @param debugState
+     * @author Will
+     * @written 28 Jan 2014 */
+public void setDebugConsole (boolean debug)
+        {
+        this.debugConsole = debug;
+        }
+
+/** Set the hue, saturation, and luminence value ranges for our
+     * particle analysis.
+     * 
+     * @param hueLow
+     *            min hue value
+     * @param hueHigh
+     *            max hue value
+     * @param saturationLow
+     *            min saturation value
+     * @param saturationHigh
+     *            max saturation value
+     * @param luminenceLow
+     *            min luminence value
+     * @param luminenceHigh
+     *            max luminence value
+     * @see NI Vision Assistant software to determine correct HSL values
+     * @author Noah Golmant
+     * @written 29 May 2014 */
+public void setHSLValues (int hueLow, int hueHigh, int saturationLow,
+        int saturationHigh, int luminenceLow, int luminenceHigh)
+    {
+    this.hueLow = hueLow;
+    this.hueHigh = hueHigh;
+    this.saturationLow = saturationLow;
+    this.saturationHigh = saturationHigh;
+    this.luminenceLow = luminenceLow;
+    this.luminenceHigh = luminenceHigh;
+    }
+
+/** Sets the LCD and proper line to print to for debugging
+     * 
+     * @param lcd
+     *            Driver station LCD screen
+     * @param lcdLine
+     *            line to print on the LCd
+     * @author Will
+     * @written 28 Jan 2014 */
+public void setLCD (DriverStationLCD lcd, DriverStationLCD.Line lcdLine)
+        {
+        this.lcd = lcd;
+        this.lcdLine = lcdLine;
+        }
+
+/** Sets the proper line to print to for debugging
+     * 
+     * @param lcdLine
+     *            line to print on the LCd
+     * @author Noah Golmant
+     * @written 28 Jan 2014 */
+public void setLCDBlobsLine (DriverStationLCD.Line lcdLine)
+        {
+        this.lcdLine = lcdLine;
+        }
+
+/** Sets the LCD line to print errors to.
+     * 
+     * @param lcdErrorLine
+     *            line to print on the LCd
+     * @author Noah Golmant
+     * @written 28 Jan 2014 */
+public void setLCDErrorLine (DriverStationLCD.Line lcdErrorLine)
+        {
+        this.lcdErrorLine = lcdErrorLine;
+        }
+
+/** Set the middleScreenWidth (half the camera image width)
+     * 
+     * @param width
+     *            the new width to set the middleScreenWidth to
+     * @return the middleScreenWidth */
+public int setMiddleScreenWidth (int width)
+    {
+    this.middleScreenWidth = width;
+    return this.middleScreenWidth;
+    }
+
+/** Sets our removal type, defaults to none. In our processing, we may
+     * remove large or small objects with a certain erosion level.
+     * 
+     * @param removal
+     * @author Noah Golmant */
+public void setObjectRemoval (int removal)
+    {
+    this.objectRemoval = removal;
+    this.objectErosion = 1; // default erosion level
+    }
+
+/** Sets our removal type, defaults to none. In our processing, we may
+     * remove large or small objects with a certain erosion level.
+     * 
+     * @param removal
+     * @param erosion
+     *            how much to erode each object; how much each iteration of
+     *            erosion removes particles
+     * @Noah */
+public void setObjectRemoval (int removal, int erosion)
+    {
+    this.objectRemoval = removal;
+    this.objectErosion = erosion;
+    }
+
+/** Sets whether or not we will apply a convex hull operation in image
+     * processing, which fills in large, hollow rectangles to create one
+     * blob
+     * 
+     * @param useConvex
+     *            whether or not to use convex hull
+     * @author Noah Golmant */
+public void setUseConvexHull (boolean useConvex)
+    {
+    this.useConvexHull = useConvex;
+    }
+
+/** Sets the watchdog object to check while processing
+     * 
+     * @param watchdog
+     * @author Will
+     * @written 28 Jan 2014 */
+public void setWatchdog (Watchdog watchdog)
+    {
+    this.watchdog = watchdog;
+    }
+
+    /** Captures and updates the current working image
+     * 
+     * @return successful image capture
+     * @author Will
+     * @written 28 Jan 2014 */
+public boolean updateImage ()
+    {
+    try
+        {
+        this.image = this.camera.getImage();
+        }
+    catch (final NIVisionException e)
+        {
+        this.image = null;
+        this.lcdError(LCDError.GET_IMAGE);
+        return false;
+        }
+    catch (final AxisCameraException e)
+        {
+        this.image = null;
+        this.lcdError(LCDError.GET_IMAGE);
+        return false;
+        }
+
+    if (this.image == null)
+        return false;
+    return true;
+    }
+
+/** Updates the current working image
+     * 
+     * @param image
+     *            the image to be used as the working image */
+public void updateImage (ColorImage image)
+    {
+    this.image = image;
+    }
+
+/** Updates the working reports array (aka blob reports array)
+     * from the working image
+     * 
+     * @see getParticleAnalysisReports()
+     * @return successful analysis */
+public boolean updateParticleAnalysisReports ()
+    {
+    if (this.image == null)
+        {
+        System.out
+                .println("image is null in updateParticleAnalysisReports()");
+        return false;
+        }
+
+        try
+        {
+        this.watchdog.feed();
+
+            // System.out.println("Width:" + image.getWidth());
+        BinaryImage thresholdImage =
+            this.image.thresholdHSL(this.hueLow, this.hueHigh,
+                    this.saturationLow, this.saturationHigh, this.luminenceLow,
+                    this.luminenceHigh);
+
+        this.watchdog.feed();
+
+        // fill in occluded rectangles
+        BinaryImage convexHullImage;
+        if (this.useConvexHull == true)
+            {
+            convexHullImage = thresholdImage.convexHull(false);
+            }
+        else
+            {
+            convexHullImage = thresholdImage;
+            }
+
+        this.watchdog.feed();
+
+        // remove small artifacts
+        BinaryImage objectRemovalImage;
+        if (this.objectRemoval == ObjectRemoval.SMALL)
+            {
+            objectRemovalImage =
+                    convexHullImage.removeSmallObjects(false,
+                        this.objectErosion);
+            }
+        else if (this.objectRemoval == ObjectRemoval.LARGE)
+            {
+            objectRemovalImage =
+                    convexHullImage.removeLargeObjects(false,
+                        this.objectErosion);
+            }
+        else
+            {
+            objectRemovalImage = convexHullImage;
+            }
+
+        this.watchdog.feed();
+
+        // check the image versus any criteria we have
+        // Any blob who's measurement of the given NIVision.MeasurementType
+        // (in some criteria) falls outside of the given range will
+        // be removed from the particleAnalysisReports array.
+
+        final BinaryImage criteriaImage =
+                objectRemovalImage.particleFilter(this.criteriaCollection);
+
+        // watchdog.feed();
+
+        // get list of results
+        this.reports = criteriaImage.getOrderedParticleAnalysisReports();
+
+        this.image.free();
+        this.image = null;
+        thresholdImage.free();
+        thresholdImage = null;
+
+        criteriaImage.free();
+        convexHullImage.free();
+        objectRemovalImage.free();
+        }
+        catch (final NIVisionException e)
+            {
+            e.printStackTrace();
+            this.lcdError(LCDError.UPDATE_ANALYSIS_REPORTS);
+            return false;
+            }
+
+        return true;
+        }
+
+}
