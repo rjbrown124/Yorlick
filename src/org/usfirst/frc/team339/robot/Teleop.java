@@ -73,16 +73,27 @@ public static void init ()
 public static void periodic ()
 {
     // TODO go over, check math, and comment
-    if (Math.abs(Hardware.leftDriver.getY()) >= .2)
+    if (Hardware.leftDriver.getY() >= .2)
         {
             Hardware.leftDriveMotor
-                    .set(1.8 * Hardware.leftDriver.getY() - .2);
+                    .set(0.8 * Hardware.leftDriver.getY() - .2);
         }
-    if (Math.abs(Hardware.rightDriver.getY()) >= .2)
+    else if (Hardware.leftDriver.getY() <= .2)
+        {
+            Hardware.leftDriveMotor
+                    .set(0.8 * Hardware.leftDriver.getY() + .2);
+        }
+    if (Hardware.rightDriver.getY() >= .2)
         {
             Hardware.rightDriveMotor
-                    .set(1.8 * Hardware.rightDriver.getY() - .2);
+                    .set(0.8 * Hardware.rightDriver.getY() - .2);
         }
+    else if (Hardware.rightDriver.getY() <= .2)
+        {
+            Hardware.rightDriveMotor
+                    .set(0.8 * Hardware.rightDriver.getY() + .2);
+        }
+
 
 } // end Periodic
 } // end class
